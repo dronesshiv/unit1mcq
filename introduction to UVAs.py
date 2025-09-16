@@ -1,5 +1,13 @@
 import streamlit as st
 
+# Initialize session state variables
+if 'q_index' not in st.session_state:
+    st.session_state.q_index = 0
+if 'score' not in st.session_state:
+    st.session_state.score = 0
+if 'answers' not in st.session_state:
+    st.session_state.answers = []
+
 # Title
 st.title("MCQs – Introduction to UAVs with Explanations")
 
@@ -74,25 +82,54 @@ questions = [
         "correct": "Object detection sensors",
         "explanation": "Obstacle detection sensors such as LiDAR or cameras help UAVs avoid collisions automatically."
     }
-    # Add more questions following the same structure if needed
+    # Add more questions as needed
 ]
 
-# Sidebar to navigate between questions
-st.sidebar.title("Navigation")
-q_index = st.sidebar.selectbox("Select Question Number", range(1, len(questions)+1)) - 1
+# Show questions until all are done
+if st.session_state.q_index < len(questions):
+    q = questions[st.session_state.q_index]
+    st.subheader(f"Question {st.session_state.q_index + 1}")
+    st.write(q["question"])
 
-# Display the question
-q = questions[q_index]
-st.subheader(f"Q{q_index+1}: {q['question']}")
+    user_answer = st.radio("Choose an answer:", q["options"], key=f"radio_{st.session_state.q_index}")
 
-# Show options and capture user input
-user_answer = st.radio("Choose an answer:", q["options"])
+    if st.button("Submit"):
+        is_correct = user_answer == q["correct"]
+        if is_correct:
+            st.session_state.score += 1
+            st.success("✔ Correct!")
+        else:
+            st.error("✘ Incorrect.")
+        st.info(f"**Correct Answer:** {q['correct']}")
+        st.write(f"**Explanation:** {q['explanation']}")
 
-# Check answer
-if st.button("Submit Answer"):
-    if user_answer == q["correct"]:
-        st.success("✔ Correct!")
-    else:
-        st.error("✘ Incorrect.")
-    st.info(f"**Correct Answer:** {q['correct']}")
-    st.write(f"**Explanation:** {q['explanation']}")
+        # Store the answer for review later
+        st.session_state.answers.append({
+            "question": q["question"],
+            "selected": user_answer,
+            "correct": q["correct"],
+            "explanation": q["explanation"],
+            "is_correct": is_correct
+        })
+
+        # Move to next question
+        st.session_state.q_index += 1
+        st.experimental_rerun()
+
+else:
+    st.header("Quiz Completed!")
+    st.write(f"Your score: {st.session_state.score} out of {len(questions)}")
+
+    for idx, ans in enumerate(st.session_state.answers):
+        st.subheader(f"Question {idx + 1}: {ans['question']}")
+        if ans["is_correct"]:
+            st.success(f"You answered: {ans['selected']} (Correct)")
+        else:
+            st.error(f"You answered: {ans['selected']} (Incorrect)")
+            st.info(f"Correct Answer: {ans['correct']}")
+        st.write(f"Explanation: {ans['explanation']}")
+
+    if st.button("Restart Quiz"):
+        for key in ["q_index", "score", "answers"]:
+            del st.session_state[key]
+        st.experimental_rerun()
